@@ -6,7 +6,7 @@ from tqdm import tqdm
 import os
 
 def generate_embeddings():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda")
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased")
     model = BertModel.from_pretrained("bert-large-uncased").to(device)
     model.eval()
@@ -15,8 +15,9 @@ def generate_embeddings():
     texts = movies["bert_text"].tolist()
     
     embeddings = []
-    for i in tqdm(range(0, len(texts)), desc="Generating BERT embeddings"):
-        batch = texts[i:i+32]
+    batch_size=64
+    for i in tqdm(range(0, len(texts), batch_size), desc="Generating BERT embeddings"):
+        batch = texts[i:i+batch_size]
         inputs = tokenizer(
             batch, 
             return_tensors="pt", 
