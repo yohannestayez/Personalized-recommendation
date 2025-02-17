@@ -40,6 +40,10 @@ def process_data(movies, ratings):
         f"[GENRES]{','.join(x['genres'])}[OVERVIEW]{x['overview']}"
         f"[TAGLINE]{x['tagline']}", axis=1
     )
+
+    movies['id'] = movies['id'].astype(str)
+    ratings['movieId'] = ratings['movieId'].astype(str)
+    
    
     
     # Ratings
@@ -47,6 +51,33 @@ def process_data(movies, ratings):
     ratings = ratings.dropna().drop_duplicates()
     ratings['rating'] = ratings['rating'] / 5.0
     
+
+from datetime import datetime
+
+def check_movie_ids_consistency(movies):
+    date_ids = []
+    non_date_ids = []
+    
+    for mid in movies['id']:
+        mid_str = str(mid)
+        try:
+            # If this works, then mid is a date in the expected format.
+            datetime.strptime(mid_str, "%Y-%m-%d")
+            date_ids.append(mid_str)
+        except ValueError:
+            non_date_ids.append(mid_str)
+    
+    if date_ids:
+        print("Found date-like IDs in movies")
+        for d in date_ids:
+            print(d)
+        # Drop movies with date-like IDs
+        movies.drop(movies[movies['id'].isin(date_ids)].index, inplace=True)
+        print(f"Dropped {len(date_ids)} movies with date-like IDs.")
+    else:
+        print("No date-like movie IDs found.")
+
+
 
 # if __name__ == "__main__":
 #     os.makedirs("data/processed", exist_ok=True)
