@@ -77,7 +77,7 @@ def train():
     print("Model initialized with node embeddings of shape:", data.x.shape)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     
-    # Assumption: first half of nodes are users and the rest are movies.
+    # First half of nodes are users and the rest are movies.
     num_users = data.x.size(0) // 2
     
     # Training loop using the full graph.
@@ -90,7 +90,7 @@ def train():
         x_full = model.embedding  # global node features
         out = model(x_full, train_data.edge_index, train_data.edge_attr)
         
-        # BPR Loss Computation on the full graph.
+        # Simplified Loss Computation on valid user->movie edges.
         global_source = train_data.edge_index[0]
         global_target = train_data.edge_index[1]
         
@@ -100,18 +100,14 @@ def train():
             print("[Train] No valid user->movie edges in this epoch.")
             continue
         
-        # Use valid edges directly since indices already correspond to global indices.
         user_emb = out[global_source[valid_mask]]
         pos_emb = out[global_target[valid_mask]]
         
-        # Negative sampling: sample negative movie nodes from nodes that are movies.
-        movie_indices = torch.arange(num_users, out.size(0), device=device)
-        neg_sample_indices = movie_indices[torch.randint(0, movie_indices.size(0), (valid_mask.sum(),), device=device)]
-        neg_emb = out[neg_sample_indices]
-        
+        # Compute the dot-product scores for observed edges.
         pos_scores = (user_emb * pos_emb).sum(dim=1)
-        neg_scores = (user_emb * neg_emb).sum(dim=1)
-        loss = -torch.log(torch.sigmoid(pos_scores - neg_scores) + 1e-8).mean()
+        
+        # BCE loss to encourage high scores on observed (positive) edges.
+        loss = F.binary_cross_entropy_with_logits(pos_scores, torch.ones_like(pos_scores))
         print("[Train] Loss:", loss.item())
         
         loss.backward()
